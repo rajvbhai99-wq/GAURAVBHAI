@@ -20,7 +20,7 @@ BOT_START_TIME = datetime.now()
 
 # ===== CONFIGURATION =====
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8996918007:AAF71vW0_YxDEwRQMpKsFChHltgg3Nlw0us")
-BOT_OWNER = int(os.getenv("BOT_OWNER", "8169131537"))
+BOT_OWNER = int(os.getenv("BOT_OWNER", "6539807903"))
 MONGO_URL = os.getenv(
     "MONGO_URL",
     "mongodb+srv://bobby84888_db_user:laS6C0qE0AWKrbUP@bobbymaster.cnk9aei.mongodb.net/?appName=BOBBYMASTER"
@@ -1135,9 +1135,44 @@ def show_help(message):
 • /verify – ✅ Check channel join
 • /id – 🆔 Your ID
 • /ping – 🏓 Bot status
+• /PAIDDDOSPRICE – 💰 Paid plans
 
 📢 Join: {PRIVATE_CHANNEL_LINK}'''
     bot.reply_to(message, help_text)
+
+
+# ============================================================
+# ===== ✅ /PAIDDDOSPRICE COMMAND =====
+# ============================================================
+@bot.message_handler(commands=['PAIDDDOSPRICE', 'paidddosprice', 'PaidDdosPrice'])
+def paid_ddos_price_command(message):
+    if check_maintenance(message): return
+    if check_banned(message): return
+    response = '''💯DDOS SERVER PRICE 😊
+════════════════
+💵𝗞𝗘𝗬 𝗣𝗥𝗜𝗖𝗜𝗡𝗚
+════════════════
+
+BOT - @DDOSXBOT
+
+Price⬇️
+Premium Plan : 300 Second Max Attack Time And Cooldown Of 0 Seconds!
+Prices Of  Ddos Key :⬇️
+
+➡️12H : 70💲
+➡️1Day : 120💲
+➡️3Days : 300💲
+➡️7Days : 500💲
+➡️30Day : 1500💲
+
+BUY 💰
+http://DESTROYLODER.shop
+http://DESTROYLODER.shop
+
+BUY MASSAGE 
+@GAURAV_BHAI1
+@GAURAV_BHAI1'''
+    bot.reply_to(message, response)
 
 
 @bot.message_handler(commands=["block_ip"])
@@ -1212,15 +1247,24 @@ def welcome_start(message):
 
 Use /help for commands.'''
     else:
-        response = f'''🚀 𝗪𝗲𝗹𝗰𝗼𝗺𝗲 𝘁𝗼 𝗣𝗿𝗲𝗺𝗶𝘂𝗺 𝗕𝗼𝘁
+        response = f'''╔══════════════════╗
+🚀 𝗪𝗘𝗟𝗖𝗢𝗠𝗘 𝗧𝗢 𝗙𝗥𝗘𝗘 𝗗𝗗𝗢𝗦 𝗣𝗢𝗪𝗘𝗥
+⚡ 𝗕𝗬 @GAURAV_BHAI1
+╚══════════════════╝
 
-🔥 𝗖𝗢𝗠𝗠𝗔𝗡𝗗𝗦 :
-• /attack <ip> <port> <time>
-• /status – Live progress
-• /verify – Check channel
-• /help
+🔥 𝗕𝗢𝗧 𝗖𝗢𝗠𝗠𝗔𝗡𝗗𝗦
 
-📢 Join: {PRIVATE_CHANNEL_LINK}'''
+➤ "/attack <ip> <port> <time>"
+➤ "/status" — Live Progress
+➤ "/verify" — Channel Verify
+➤ "/help" — Help Menu
+➤ "/PAIDDDOSPRICE" — Paid Plans
+
+👑 𝗕𝗢𝗧 𝗢𝗪𝗡𝗘𝗥
+➜ @GAURAV_BHAI1
+
+📢 𝗝𝗢𝗜𝗡 𝗢𝗨𝗥 𝗖𝗛𝗔𝗡𝗡𝗘𝗟
+➜ {PRIVATE_CHANNEL_LINK}'''
     bot.reply_to(message, response)
 
 
